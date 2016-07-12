@@ -55,12 +55,14 @@ grailsPublish {
 	desc = 'Quartz integration'
 	developers = [burtbeckwith: 'Burt Beckwith']
 	githubSlug = 'agileorbit/grails-schwartz'
+	issueTrackerUrl = 'https://github.com/agileorbit/grails-schwartz/issues'
 	license {
 		name = 'Apache-2.0'
 	}
 	title = 'Schwartz Plugin'
 	userOrg = 'agileorbit'
 	repo = 'grails-plugins'
+	vcsUrl = 'https://github.com/agileorbit/grails-schwartz/'
 }
 
 task docs(dependsOn: [asciidoctor, groovydoc]) << {

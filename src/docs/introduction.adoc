@@ -8,3 +8,8 @@ The plugin is similar at a high level to the https://github.com/grails-plugins/g
 In addition to this plugin documentation, be sure to familiarize yourself with the http://www.quartz-scheduler.org/documentation/[Quartz documentation], in particular the {refdocs}configuration/[Configuration Reference], the {refdocs}cookbook/["Cookbook"], the {refdocs}tutorials/[Tutorials], the {refdocs}examples/[Examples], and http://www.quartz-scheduler.org/documentation/best-practices.html[Best Practices].
 
 image::20120815-145326.jpg[]
+
+=== Release History
+
+* July 12, 2016
+** 1.0.0 release

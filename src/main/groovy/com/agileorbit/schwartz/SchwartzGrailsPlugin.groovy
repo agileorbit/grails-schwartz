@@ -34,7 +34,7 @@ class SchwartzGrailsPlugin extends Plugin {
 	def author = 'Burt Beckwith'
 	def authorEmail = 'burt@agileorbit.com'
 	def description = 'Quartz integration'
-	def documentation = 'http://grails.org/plugin/schwartz'
+	def documentation = 'http://agileorbit.github.io/grails-schwartz'
 	def license = 'APACHE'
 	def organization = [name: 'Agile Orbit', url: 'http://agileorbit.com/']
 	def issueManagement = [url: 'https://github.com/agileorbit/grails-schwartz/issues']
