@@ -1,0 +1,10 @@
+[[introduction]]
+== Introduction to the Schwartz Plugin
+
+The Schwartz plugin integrates the http://www.quartz-scheduler.org/[Quartz Enterprize Job Scheduler] with Grails, making it easy to schedule and manage recurring and ad-hoc jobs for asynchronous and synchronous processing.
+
+The plugin is similar at a high level to the https://github.com/grails-plugins/grails-quartz[Quartz] plugin in that it makes it easy to schedule Quartz ``Job``s and ``Trigger``s without having to deal directly with the Quartz API and mindset. But if you are used to working with Quartz directly you can continue to do so with this plugin - it provides convenience classes and Traits to make job scheduling easier, but you have a lot of flexibility in how you perform the various tasks.
+
+In addition to this plugin documentation, be sure to familiarize yourself with the http://www.quartz-scheduler.org/documentation/[Quartz documentation], in particular the {refdocs}configuration/[Configuration Reference], the {refdocs}cookbook/["Cookbook"], the {refdocs}tutorials/[Tutorials], the {refdocs}examples/[Examples], and http://www.quartz-scheduler.org/documentation/best-practices.html[Best Practices].
+
+image::20120815-145326.jpg[]

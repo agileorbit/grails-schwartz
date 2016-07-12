@@ -1,0 +1,50 @@
+[[quartzService]]
+== QuartzService
+
+The plugin includes a utility service, `quartzService`, that it uses internally for much of the interaction with the Quartz `Scheduler` and other tasks, and you can also use it in your application. Add a dependency injection for the service like for any Spring bean (`QuartzService quartzService` or `def quartzService`). The service's methods are described below.
+
+[cols="50,50"]
+|====================
+| *Method* | *Description*
+
+|`init`
+|Called from `doWithApplicationContext()` at startup; should not be called from application code.
+
+|`validateTables`
+|Checks that the required tables exist if JDBC storage is enabled.
+
+
+|`validateExistingJobs`
+|Checks that all JobDetails can be retrieved to catch problems early such as deleted/moved/renamed Job classes.
+
+|`scheduleJobs`
+|Registers a `JobDetail` and schedules triggers for each Spring bean that implements `SchwartzJob`; should not be called from application code.
+
+|`scheduleJob`
+|Builds and registers a `JobDetail` with values from a `SchwartzJob` instance and and schedules the job's triggers.
+
+|`updateJobDetail`
+|Replaces data for an existing `JobDetail` with new values.
+
+|`getStoredJobDetail`
+|Retrieves the `JobDetail` stored for a job if one exists.
+
+|`triggerJob`
+|Triggers a job to run immediately.
+
+|`getTriggers`
+|Retrieve the triggers scheduled for a a job.
+
+|`scheduleTrigger`
+|Register a `Trigger` in the `Scheduler`.
+
+|`purgeTables`
+|Deletes data from all database tables; called at startup if `purgeQuartzTablesOnStartup` is `true` but can be called on-demand also.
+
+|`clearData`
+|Uses standard Quartz functionality to clear job and trigger data (all tables except QRTZ_FIRED_TRIGGERS, QRTZ_LOCKS, and QRTZ_SCHEDULER_STATE).
+
+|`tableNamePrefix`
+|Looks up the database table name prefix if set in the config and returns the default ("`QRTZ_`") if not overridden.
+
+|====================

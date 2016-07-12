@@ -1,0 +1,154 @@
+[[comparisonWithQuartzPlugin]]
+== Comparison with the Quartz Plugin
+
+The two plugins are similar in many ways, but significantly different in others. Both make it easy to create a simple class that is conveniently registered with Quartz as a `JobDetail` and optionally some triggers.
+
+The Quartz plugin abstracts away some of the details with the expectation that this makes the process simpler. I've found the opposite however; for the small number of keystrokes saved the abstractions used add layers of dynamic Groovy code that add little value, slow down execution (admittedly not significantly), and make working with Quartz more confusing in some cases.
+
+Using Quartz outside of Grails in a regular Java project isn't particularly complex. You just have to create a class for each job and implement the {apidocs}org/quartz/Job.html[org.quartz.Job] interface which has a single method, `execute` with a single argument, a `JobExecutionContext`, for example:
+
+[source,java]
+----
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+
+public class MyJob implements Job {
+   public void execute(JobExecutionContext context) throws JobExecutionException {
+      // your code here
+   }
+}
+----
+
+The Quartz plugin doesn't require that your job classes implement `Job` or any interface, but simply have an `execute` method. It can take a `JobExecutionContext` argument if you have a need for it, or can be a no-arg method if not, and there is no mention of `JobExecutionException` anywhere in the documentation. A job can be (and typically is) implemented as simply as
+
+[source,groovy]
+----
+class MyJob {
+
+   def execute() {
+      // your code here
+   }
+}
+----
+
+This certainly seems better, using a pattern that's common in Grails and Groovy apps where Groovy and/or the framework reduce boilerplate code and let you focus on solving the problem at hand, in this case performing some actions when a trigger fires for your job. Internally the plugin has a single class that implements `Job` (and a similar second class for stateful jobs) which is the actual class registered in Quartz as the implementation class for the job. Your application's job classes are registered as Spring beans, and the bean name is stored with the `JobDetail`, and when a trigger fires, the `execute()` method is invoked in the plugin's job class, and your application's job bean is retrieved from Spring to do the actual job processing work. The `execute()` method and whether it has a `JobExecutionContext` argument are looked up once using reflection at startup, and then invoked with reflection each time a trigger fires, with handling for `InvocationTargetException` and `IllegalAccessException` that's necessary because the method is dynamically invoked.
+
+There some other hidden costs also. In addition to the `execute()` method, you define triggers for your job using the plugin's custom DSL in a static Closure:
+
+[source,groovy]
+----
+class MyJob {
+
+   static triggers = {
+      simple name:'simpleTrigger', startDelay: ...
+   }
+
+   def execute() {
+      // your code here
+   }
+}
+----
+
+Having a closure like that in the class means you cannot use the `CompileStatic` annotation at the class level, only per-method. This is a small difference and there wouldn't be much gained if the trigger definition code was statically compiled, but in practice there tends to be little use of `CompileStatic` at all. I now use `CompileStatic` wherever I can, because of the performance boost but also because it makes writing code much faster because IDEs have a lot more information available for use with autocomplete and other inferencing features. My opinion is that plugins should be encouraging and enabling _more_ use of static compilation, not implicitly discouraging it.
+
+Hopefully your jobs will always run without errors, but exceptions occur and by ignoring the possibility that a `JobExecutionException` might be thrown during job execution also has a runtime cost. This is a checked exception, which Groovy doesn't require us to deal with. But it implements that by wrapping checked exceptions in an `UndeclaredThrowableException`, and unwrapping them before they're actually handled. This also affects the majority of the methods in `grails.plugins.quartz.QuartzJob` and `grails.plugins.quartz.JobManagerService`, specifically the methods that call Quartz `Scheduler` methods, most of which can throw `JobExecutionException`. Exceptions in Groovy are already slow and expensive and having a feature in a plugin that adds processing and overhead only makes the problem worse.
+
+None of these costs are particularly bad, and in general performance is likely not noticeably different from the more verbose implementation in Java. But if a lot of work is being done in your Quartz jobs, or if they fire often, these costs can certainly add up. This could easily be shrugged off as a non-issue if the implementation savings was significant, but all we gained was the ability to omit the `execute()` method argument, omit the `implements Job` declaration, and omit the `JobExecutionException`. That's a negligible savings (literally a few dozen keystrokes at best), especially given the potential costs.
+
+=== Building triggers
+
+Triggers are defined statically in the Quartz plugin in a `triggers` closure in each job class, using the plugin's trigger DSL. Only "`simple`" and "`cron`" triggers are directly supported, but you can configure any trigger type by specifying the class and all of the trigger properties as name/value pairs. The DSL is fairly limited and there is no autocompletion.
+
+With Schwartz you also can define triggers in the job class, typically in the `buildTriggers()` method in job classes that implement `SchwartzJob` or `StatefulSchwartzJob`. There is no DSL, but instead you define triggers programmatically. As you can see from the examples throughout the documentation, using the Quartz builder classes added in Quartz 2.0, or the plugin's `BuilderFactory` which aggregates the logic for all of the Quartz builders into one builder, the programmatic approach feels a lot like using a DSL but with the added benefit of having immediate feedback about available options and syntax when coding in an IDE. You can create different triggers or use different settings depending on the current `Environment`, get access to the `Config`, and  use any Spring bean, Grails service, etc. as needed, and the `QuartzService` is available inside all `SchwartzJob` classes. You can also create instances of the "`Impl`" classes directly and set properties there, for example if you already have working existing code, but this approach shouldn't be used in general.
+
+You can additionally create triggers outside of your job classes and schedule them on-demand, using the Quartz `Scheduler` or helper methods in `QuartzService`.
+
+=== Differences in default values
+
+When building triggers, if no value is specified the Quartz plugin defaults to a 60,000 millisecond (one minute) repeat interval, "`GRAILS_JOBS`" for the job group name, "`GRAILS_TRIGGERS`" for the trigger group name, "`Grails Job`" for the job description, and, inexplicably, "`0 0 6 * * ?`" for the CRON expression.  This plugin has no defaults for these properties (other than the job and trigger names, which default to the Quartz default value of "`DEFAULT`" for both).
+
+Another difference is trigger priority; triggers created in `grails.plugins.quartz.TriggerUtils` default to a priority value of 6 (one larger than the default value of 5, presumably as an homage to Spinal Tap).
+
+The two plugins have the same default values for start delay (0), repeat count (repeat forever), session required (`true`), durability (`true`), and recovery requested (`false`).
+
+=== Migrating from the Quartz plugin
+
+==== Migrating config settings
+
+The Quartz plugin's config settings (`quartz.autoStartup`, `quartz.exposeSchedulerInRepository`, `quartz.jdbcStore`, `quartz.jdbcStoreDataSource`, `quartz.pluginEnabled`, `quartz.purgeQuartzTablesOnStartup`, and `quartz.waitForJobsToCompleteOnShutdown`) are all also used in this plugin and have the same default values, so there shouldn't be any changes required there.
+
+==== Migrating job classes
+
+Quartz plugin jobs are not directly usable in the Schwartz plugin but are easily converted. The Quartz plugin includes an artifact handler that lets you (technically it requires that you) define job classes under `grails-app/jobs`. Schwartz jobs are not artifacts by default and have no dedicated class location.
+
+The first thing to do for each job is to decide if it should be a Grails Service or not. This is optional but if your job writes to the database it should be transactional or use transactional services to do that work, and if it makes sense to do that work transactionally inside the job class then a Service is a good option.
+
+Run the <<create-job>> script for each existing Quartz plugin job, and add the `--pogo` flag to generate the class under `src/main/groovy`, or omit the flag to generate a Service; if your Quartz plugin job is a stateful job (somewhat confusingly referred to as a non-concurrent job in the Quartz plugin docs, since concurrency is only one aspect of a stateful job) then include the `--stateful` flag, or omit it to make the generated class a stateless job:
+
+.A stateless job that's also a Service:
+....
+$ grails create-job <classname>
+....
+
+.A stateless job defined in src/main/groovy:
+....
+$ grails create-job <classname> --pogo
+....
+
+.A stateful job that's also a Service:
+....
+$ grails create-job <classname> --stateful
+....
+
+.A stateful job defined in src/main/groovy:
+....
+$ grails create-job <classname> --pogo --stateful
+....
+
+Both plugins have the same defaults for durability, session required, requests recovery, so if you had overridden any of those, do the same in your `SchwarzJob` class by overridding the corresponding method from the trait, e.g.
+
+[source,groovy]
+----
+boolean getSessionRequired() { false }
+----
+
+Also add a method override for the description, job name, and job group as needed.
+
+==== Migrating triggers
+
+Convert triggers defined using the Quartz plugin DSL with plugins triggers defined using this plugin's `BuilderFactory` (either directly or by using one of the `factory()` methods defined in `SchwartzJob`) or using the Quartz builders (either directly or by using one of the `builder()` methods defined in `SchwartzJob`). Define these in the `buildTriggers()` method and add the trigger instances to the `triggers` list, e.g.
+
+[source,groovy]
+----
+import static com.agileorbit.schwartz.builder.MisfireHandling.NowWithExistingCount
+import static org.quartz.DateBuilder.todayAt
+
+void buildTriggers() {
+   triggers << factory('cron every second').cronSchedule('0/1 * * * * ?').build()
+
+   triggers << factory('Repeat3TimesEvery100').intervalInMillis(100).repeatCount(3).build()
+
+   triggers << factory('repeat every 500ms forever').intervalInMillis(500).build()
+
+   triggers << factory('repeat every two days forever').intervalInDays(2).build()
+
+   triggers << factory('trigger1')
+         .intervalInMillis(100)
+         .startDelay(2000).noRepeat()
+         .jobData(foo: 'bar').build()
+
+   triggers << factory('run_once_immediately').noRepeat().build()
+
+   triggers << factory('MisfireTrigger2')
+         .intervalInMillis(150)
+         .misfireHandling(NowWithExistingCount)
+         .build()
+
+   triggers << factory('trigger1').group('group1').intervalInSeconds(1).build()
+
+   triggers << factory('run every day one second before midnight')
+         .startAt(todayAt(23,59,59))
+         .intervalInDays(1).build()
+}
+----

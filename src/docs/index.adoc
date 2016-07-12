@@ -1,0 +1,26 @@
+= Schwartz Plugin - Reference Documentation
+Burt Beckwith
+
+:apidocs: http://www.quartz-scheduler.org/api/2.2.1/
+:apidocs_spring: http://docs.spring.io/spring/docs/4.2.x/javadoc-api/
+:refdocs: http://www.quartz-scheduler.org/documentation/quartz-2.2.x/
+
+include::introduction.adoc[]
+
+include::usage.adoc[]
+
+include::configuration.adoc[]
+
+include::comparisonWithQuartzPlugin.adoc[]
+
+include::triggers.adoc[]
+
+include::listeners.adoc[]
+
+include::quartzService.adoc[]
+
+include::tutorials.adoc[]
+
+include::advanced.adoc[]
+
+include::scriptsAndCommands.adoc[]

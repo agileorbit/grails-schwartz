@@ -1,0 +1,20 @@
+[[create-jdbc-sql]]
+=== create-jdbc-sql
+
+.Purpose
+
+Uses Hibernate to generate SQL to create Quartz database tables. The general format is:
+
+....
+$ grails create-jdbc-sql [FILENAME]
+....
+
+.Examples
+
+....
+$ grails create-jdbc-sql quartz_jdbc.sql
+....
+
+.Description
+
+Creates in-memory Hibernate model objects and returns the SQL generated from those; this is similar to the process used by the schema-export script. The hibernate-core jar or the hibernate plugin must be in the classpath to use this command.

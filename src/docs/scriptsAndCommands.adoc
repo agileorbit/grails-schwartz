@@ -1,0 +1,31 @@
+[[scriptsAndCommands]]
+== Scripts and Commands
+
+The plugin must be in the Gradle classpath in order for the scripts and commands to be available from the commandline. Be sure to include a "`classpath`" element in the `dependencies` section of the `buildscript` block in your application's `build.gradle` to make the script available to Gradle, in addition to adding a regular "`compile`" element in the main `dependencies` block:
+
+[source,groovy]
+[subs="attributes"]
+----
+buildscript {
+   repositories {
+      ...
+   }
+   dependencies {
+      classpath "org.grails:grails-gradle-plugin:$grailsVersion"
+      ...
+      classpath 'com.agileorbit:schwartz:{project-version}'
+   }
+}
+
+dependencies {
+   ...
+   compile 'com.agileorbit:schwartz:{project-version}'
+   ...
+}
+----
+
+include::scripts/create-job.adoc[]
+
+include::scripts/create-jdbc-tables-changelog.adoc[]
+
+include::scripts/create-jdbc-sql.adoc[]

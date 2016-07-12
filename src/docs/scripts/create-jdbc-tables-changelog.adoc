@@ -1,0 +1,31 @@
+[[create-jdbc-tables-changelog]]
+=== create-jdbc-tables-changelog
+
+.Purpose
+
+Creates a Liquibase changelog (or the SQL generated from a changelog) to create Quartz database tables. The general format is:
+
+....
+$ grails create-jdbc-tables-changelog [FILENAME]
+....
+
+.Examples
+
+....
+$ grails create-jdbc-tables-changelog grails-app/migrations/quartz_jdbc.groovy
+....
+
+....
+$ grails create-jdbc-tables-changelog grails-app/migrations/quartz_jdbc.xml
+....
+
+....
+$ grails create-jdbc-tables-changelog quartz_jdbc.sql
+....
+
+.Description
+
+Creates in-memory Liquibase model objects and builds a changelog from those in Groovy or XML format (or any format supported by Liquibase). Will optionally generate the resulting SQL from the changelog. The format is determined by the extension of the file you specify; if it is "`groovy`", "`xml`", or any of the file formats supported by Liquibase, a changelog file will be created. Unlike the database-migration plugin the file is not written relative to the `grails-app/migrations` folder, it's written relative to the application root directory. If the extension of the file is "`sql`", a changelog will be generated but it will be used to by Liquibase to generate the SQL that would be created for the changelog and that SQL is written to the output file.
+
+
+The liquibase-core jar or the database-migration plugin must be in the classpath to use this command.

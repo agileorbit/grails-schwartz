@@ -1,0 +1,163 @@
+[[configuration]]
+== Configuration
+
+=== Plugin config options
+
+There are several configuration settings that you can set in the Grails config to customize various aspects of the plugin, and you can also specify Quartz configuration settings that will affect the configuration of the Scheduler, JobStore, etc.
+
+All config options must be in the `quartz` block in `application.groovy` (or make the equivalent changes in `application.yml` if you haven't converted it to Groovy syntax yet) but are shown here without the prefix.
+
+[cols="30,30,40"]
+|====================
+| *Property* | *Default Value* | *Meaning*
+
+|quartz.autoStartup
+|`true`
+|If `false` the plugin will do all of its initialization tasks when the application starts (configuring Spring beans, registering ``JobDetail``s and ``Trigger``s, validation tasks, data purging if configured, etc.) but doesn't call `quartzScheduler.start()`. This gives you a chance to do custom work after the plugin initializes but before starting the scheduler, or disabling the scheduler per-environment (e.g. in the test environment). You can manually start later by dependency injecting the Quartz scheduler bean (using `Scheduler quartzScheduler` or `def quartzScheduler`) and calling `quartzScheduler.start()`.
+
+|quartz.clearQuartzDataOnStartup
+|`false`
+|when `true`, deletes job and trigger data from Quartz database tables (all tables except QRTZ_FIRED_TRIGGERS, QRTZ_LOCKS, and QRTZ_SCHEDULER_STATE, and filtered by scheduler name) on startup (only makes sense if jdbcStore=true)
+
+|quartz.exposeSchedulerInRepository
+|`false`
+|If `true` the `Scheduler` instance will be registered in the Quartz {apidocs}org/quartz/impl/SchedulerRepository.html[SchedulerRepository].
+
+|quartz.globalJobListenerNames
+|'exceptionPrinterJobListener', 'loggingJobListener', 'progressTrackingListener'
+|Names of Spring beans that implement the {apidocs}org/quartz/JobListener.html[JobListener] interface that should be registered with Quartz at startup as global listeners.
+
+|quartz.globalTriggerListenerNames
+|'loggingTriggerListener', 'progressTrackingListener'
+|Names of Spring beans that implement the {apidocs}org/quartz/TriggerListener.html[TriggerListener] interface that should be registered with Quartz at startup as global listeners.
+
+|quartz.jdbcStore
+|`false`
+|If `true`, enables storing job and trigger data in a database instead of in-memory with RAMJobStore.
+
+|quartz.jdbcStoreDataSource
+|_none_
+|Spring bean name of the `DataSource` bean to use with JDBC job storage, if the bean name isn't "`dataSource`".
+
+|quartz.pluginEnabled
+|`true`
+|If `false` nothing is configured, for example in the test environment so jobs aren't firing during test execution.
+
+|quartz.purgeQuartzTablesOnStartup
+|false
+|More aggressive than `clearQuartzDataOnStartup`; if `true` all Quartz database tables are emptied at startup, bypassing Quartz APIs and simply running SQL queries to delete everything.
+
+|quartz.schedulerListenerNames
+|'loggingSchedulerListener'
+|Names of Spring beans that implement the {apidocs}org/quartz/SchedulerListener.html[SchedulerListener] interface that should be registered with Quartz at startup as global listeners.
+
+|quartz.waitForJobsToCompleteOnShutdown
+|`false`
+|Whether to wait for jobs to complete when the application is shutting down.
+|====================
+
+=== Quartz config options
+
+In addition to the named config options above, the plugin generates a `Properties` instance with values that you would typically otherwise store in a `quartz.properties` file. Configuring the values in this way can be much more flexible, especially if you take advantage of Groovy syntax, and also has support for environments. Set the values in the `properties` block under in the root `quartz` block; when they're read to populate the `Properties` instance they're prefixed with "org.". This listing shows a fairly complete listing of the default settings for properties that are most likely to be configured. Since this mostly includes default values it doesn't make much sense to copy this to your application's config file - it's here only as a reference.
+
+Check out the {refdocs}configuration/[Quartz configuration documentation] for detailed information about what properties are available.
+
+[source,groovy]
+.`application.groovy`
+----
+import org.quartz.core.QuartzSchedulerResources
+import org.quartz.impl.DefaultThreadExecutor
+import org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+import org.quartz.simpl.SimpleInstanceIdGenerator
+import org.quartz.simpl.SimpleThreadPool
+
+quartz {
+   autoStartup = true
+   clearQuartzDataOnStartup = false
+   exposeSchedulerInRepository = false
+   jdbcStore = false
+   jdbcStoreDataSource = 'dataSource'
+   purgeQuartzTablesOnStartup = false
+   startupDelay = 0
+   waitForJobsToCompleteOnShutdown = false
+
+   properties {
+      // RAMJobStore
+      jobStore {
+         misfireThreshold = 60000
+      }
+      // JDBC
+      /*
+      jobStore {
+         acquireTriggersWithinLock = false // should be true if
+                                           // batchTriggerAcquisitionMaxCount > 1
+         clusterCheckinInterval = 7500
+         dontSetAutoCommitFalse = false
+         dontSetNonManagedTXConnectionAutoCommitFalse = false
+         driverDelegateClass = StdJDBCDelegate.name
+         driverDelegateInitString = null
+         isClustered = false
+         lockHandler.class = null // if null Quartz will determine which to use
+         maxMisfiresToHandleAtATime = 20
+         misfireThreshold = 60000
+         selectWithLockSQL = 'SELECT * FROM {0}LOCKS WHERE SCHED_NAME = {1}' +
+                             ' AND LOCK_NAME = ? FOR UPDATE'
+         tablePrefix = 'QRTZ_'
+         txIsolationLevelReadCommitted = false
+         txIsolationLevelSerializable = false
+         useProperties = false
+      }
+      */
+      managementRESTService {
+         bind = '0.0.0.0:9889'
+         enabled = false
+      }
+      scheduler {
+         batchTriggerAcquisitionFireAheadTimeWindow = 0
+         batchTriggerAcquisitionMaxCount = 1
+         classLoadHelper.class = null // Quartz default is CascadingClassLoadHelper but
+                                      // Spring's SchedulerFactoryBean configures a
+                                      // ResourceLoaderClassLoadHelper if no value is set
+         dbFailureRetryInterval = 15000
+         idleWaitTime = 30000
+         instanceId = 'NON_CLUSTERED'
+         instanceIdGenerator.class = SimpleInstanceIdGenerator.name
+         instanceName = 'QuartzScheduler'
+         interruptJobsOnShutdown = false
+         interruptJobsOnShutdownWithWait = false
+         jmx {
+            export = true // default is false
+            objectName = null // if null Quartz will generate with
+                              // QuartzSchedulerResources.generateJMXObjectName()
+            proxy = false
+            proxy.class = null
+         }
+         makeSchedulerThreadDaemon = false
+         rmi {
+            bindName = null // if null Quartz will generate with
+                            // QuartzSchedulerResources.getUniqueIdentifier()
+            createRegistry = QuartzSchedulerResources.CREATE_REGISTRY_NEVER // 'never'
+            export = false
+            proxy = false
+            registryHost = 'localhost'
+            registryPort = 1099
+            serverPort = -1 // random
+         }
+         skipUpdateCheck = true
+         threadName = instanceName + '_QuartzSchedulerThread'
+         threadsInheritContextClassLoaderOfInitializer = false
+         userTransactionURL = null
+         wrapJobExecutionInUserTransaction = false
+      }
+      threadExecutor.class = DefaultThreadExecutor.name
+      threadPool.class = SimpleThreadPool.name
+      threadPool {
+         makeThreadsDaemons = false
+         threadCount   = 10
+         threadPriority = Thread.NORM_PRIORITY // 5
+         threadsInheritContextClassLoaderOfInitializingThread = false
+         threadsInheritGroupOfInitializingThread = true
+      }
+   }
+}
+----

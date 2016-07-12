@@ -1,0 +1,181 @@
+[[advanced]]
+== Advanced Topics
+
+[[jdbcJobStorage]]
+=== JDBC Job Storage
+
+The default implementation of the Quartz {apidocs}org/quartz/spi/JobStore.html[JobStore] is {apidocs}org/quartz/simpl/RAMJobStore.html[RAMJobStore] which keeps everything in-memory at the server where the schedular is running. This works well when you only have one server but when you need to scale beyond one, or run multiple instances for high availability, it's important to both spread the workload between the servers and to ensure that triggers only fire on one machine, and for that you need centralized storage. Using Quartz's support for storage in a relational database is one good option, and Quartz also supports using Terracotta as the `JobStore`.
+
+The initial configuration to change from in-memory to a database is only a few steps, and there are many optional tuning and configuration options described in {refdocs}configuration/ConfigJobStoreCMT.html[the documentation].
+
+One step when using traditional Quartz outside of Grails is deciding what transaction support to use; `JobStoreTX` manages transactions for Quartz table updates but cannot participate in your application's transactions, or `JobStoreCMT` which uses the transaction support from the application server or framework and can update Quartz tables transactionally along with application table updates. You also would add connection and pool-management properties to the Quartz configuration to create a DataSource that Quartz uses for its queries.
+
+Spring provides a third option with its {apidocs_spring}/org/springframework/scheduling/quartz/LocalDataSourceJobStore.html[LocalDataSourceJobStore] implementation which uses the application's DataSource (or one of them if there are multiple) and existing transaction support, which lets Quartz updates use the same transaction support as the rest of the application. This is the option used by the plugin, and to enable it you simply set the DataSource as a property of the {apidocs_spring}org/springframework/scheduling/quartz/SchedulerFactoryBean.html[SchedulerFactoryBean] Spring bean. The plugin will do this for you if you set the `quartz.jdbcStore` config value to `true`:
+
+[source,groovy]
+----
+quartz {
+   jdbcStore = true
+}
+----
+
+By default it will use the `dataSource` Spring bean, and to use a different DataSource bean, set its name in the `quartz.jdbcStoreDataSource` property:
+
+[source,groovy]
+----
+quartz {
+   jdbcStore = true
+   jdbcStoreDataSource = 'someOtherDataSource'
+}
+----
+
+If you use this approach, do not configure the `org.quartz.jobStore.class` Quartz property or any values for a connection pool as described in the Quartz JDBC documentation - the plugin and the Spring support classes make the appropriate config changes when creating the Scheduler and its support objects.
+
+==== Database tables
+
+You'll need to create the database tables that Quartz uses to store job and trigger information, and there are a few different options available. The full Quartz distribution (available to download from http://www.quartz-scheduler.org/downloads/[the Quartz website]) contains files with SQL statements for many popular databases. In addition, the plugin includes two commands that will create a Liquibase changelog or the equivalent SQL for you. Use whichever of these approaches you prefer and apply the changelog or execute the SQL to create the tables.
+
+If you're using the database-migration plugin (or Liquibase directly), you should use the <<create-jdbc-tables-changelog>> command, e.g.
+
+....
+$ grails create-jdbc-tables-changelog grails-app/migrations/quartz_jdbc.groovy
+....
+
+Add the file to your main changelog file and run
+
+....
+$ grails dbm-update
+....
+
+The <<create-jdbc-sql>> command is similar but only has a dependency on Hibernate. Run the script to generate the SQL:
+
+....
+$ grails create-jdbc-sql quartz_jdbc.sql
+....
+
+and use the client for you database or another tool to run the SQL statements and create the tables.
+
+==== DriverDelegate
+
+Quartz needs to know which {apidocs}org/quartz/impl/jdbcjobstore/DriverDelegate.html[DriverDelegate] implementation that the `JobStore` will use to perform the actual queries and updates. This is similar to the `Dialect` concept in Hibernate, and allows the core functionality to focus on the logic around job management and delegates database-specific JDBC work to a specialized helper class. Some databases use the default implementation, {apidocs}org/quartz/impl/jdbcjobstore/StdJDBCDelegate.html[StdJDBCDelegate], but there are custom implementations for databases that require different logic for various calls. The following table summarizes which class to use for several popular databases but check with the online documentation to be sure to select the correct type for the database you're using:
+
+[cols="50,50"]
+|====================
+| *DriverDelegate Class* | *Database(s)*
+
+|{apidocs}org/quartz/impl/jdbcjobstore/StdJDBCDelegate.html[StdJDBCDelegate]
+|H2, Informix, MySQL
+
+|{apidocs}org/quartz/impl/jdbcjobstore/DB2v6Delegate.html[DB2v6Delegate]
+|DB2 6.x
+
+|{apidocs}org/quartz/impl/jdbcjobstore/DB2v7Delegate.html[DB2v7Delegate]
+|DB2 7.x
+
+|{apidocs}org/quartz/impl/jdbcjobstore/DB2v8Delegate.html[DB2v8Delegate]
+|DB2 8.x
+
+|{apidocs}org/quartz/impl/jdbcjobstore/MSSQLDelegate.html[MSSQLDelegate]
+|SQL Server
+
+|{apidocs}org/quartz/impl/jdbcjobstore/oracle/OracleDelegate.html[OracleDelegate]
+|Oracle
+
+|{apidocs}org/quartz/impl/jdbcjobstore/PostgreSQLDelegate.html[PostgreSQLDelegate]
+|PostgreSQL
+
+|====================
+
+The default is `StdJDBCDelegate` so if your database uses that you don't need to make any changes. If you're using one of the databases that has a custom driver delegate implementation, specify the class name in the config in the `driverDelegateClass` setting, e.g. for PostgreSQL you would use
+
+[source,groovy]
+----
+import org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
+
+quartz {
+   jdbcStore = true
+   properties {
+      jobStore {
+         driverDelegateClass = PostgreSQLDelegate.name
+      }
+   }
+}
+----
+
+There are several other JDBC-related config options, so familiarize yourself with those in case they can be of use, but the defaults should work well in general for most of the properties. The properties all start with "`org.quartz.jobStore.`", e.g. "`org.quartz.jobStore.tablePrefix`", "`org.quartz.jobStore.txIsolationLevelSerializable`", etc. so they would be set in the "`quartz.properties.jobStore`" config block, e.g.
+
+[source,groovy]
+----
+quartz {
+   ...
+   properties {
+      jobStore {
+         acquireTriggersWithinLock = ...
+         clusterCheckinInterval = ...
+         ...
+      }
+   }
+}
+----
+
+To summarize, the general steps to change job storage from in-memory to JDBC are:
+
+- execute the SQL statements (from one of the Quartz example files or using one of the plugin commands) to create the tables and indexes
+- set `quartz.jdbcStore` to `true` in the config
+- set `quartz.driverDelegateClass` to the name of the `DriverDelegate` used by your database if it's not the default
+- optionally specify a non-default DataSource bean name for `quartz.jdbcStoreDataSource`
+- optionally configure additional properties
+
+[[clustering]]
+=== Clustering
+
+Clustering is a moderately complex topic and you should read the {refdocs}/configuration/ConfigJDBCJobStoreClustering.html[Quartz clustering documentation] before trying to implement it, but there are only a few required steps to get basic clustering working.
+
+The first is to configure storage of job data in a database, so refer to the previous section for those steps.
+
+In addition, you must enable clustering with the `isClustered` config setting, and choose a shared cluster name by setting the `instanceName` config setting, e.g.
+
+[source,groovy]
+----
+quartz {
+   jdbcStore = true
+   properties {
+      jobStore {
+         isClustered = true
+      }
+      scheduler {
+         instanceName = 'cluster_tutorial'
+      }
+   }
+}
+----
+
+The remaining required config setting is a unique instance id for each node in the cluster, using the `instanceId` config setting. You can let Quartz assign a unique name for each node automatically by using the value "`AUTO`", e.g.
+
+[source,groovy]
+----
+quartz {
+   jdbcStore = true
+   properties {
+      jobStore {
+         isClustered = true
+      }
+      scheduler {
+         instanceName = 'cluster_tutorial'
+         instanceId = 'AUTO'
+      }
+   }
+}
+----
+
+but if you want to choose the values yourself you would omit that setting from `application.groovy` and set the value externally for each server instance.
+
+That's all that's required, but refer to the Quartz docs for information about the various optional config settings that are available, and try out the <<clusterTutorial>> to see clustering in action.
+
+To summarize, the general steps to change job storage from in-memory to JDBC are:
+
+- configure database job storage
+- set `quartz.properties.jobStore.isClustered` to `true` in the config
+- set `quartz.properties.scheduler.instanceName` to the cluster name in the config
+- set `quartz.properties.scheduler.instanceId` to '`AUTO`' in the config to use auto-generated unique node names, or specify the value externally for each node
+- optionally configure additional properties

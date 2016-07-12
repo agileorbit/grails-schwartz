@@ -1,0 +1,1024 @@
+[[triggers]]
+== Triggers
+
+Quartz includes four interfaces that extend the core {apidocs}org/quartz/Trigger.html[Trigger] interface; {apidocs}org/quartz/CalendarIntervalTrigger.html[CalendarIntervalTrigger], {apidocs}org/quartz/CronTrigger.html[CronTrigger], {apidocs}org/quartz/DailyTimeIntervalTrigger.html[DailyTimeIntervalTrigger], and {apidocs}org/quartz/SimpleTrigger.html[SimpleTrigger]. Each has a default implementation ({apidocs}org/quartz/impl/triggers/CalendarIntervalTriggerImpl.html[CalendarIntervalTriggerImpl], {apidocs}org/quartz/impl/triggers/CronTriggerImpl.html[CronTriggerImpl], {apidocs}org/quartz/impl/triggers/DailyTimeIntervalTriggerImpl.html[DailyTimeIntervalTriggerImpl], and {apidocs}org/quartz/impl/triggers/SimpleTriggerImpl.html[SimpleTriggerImpl]) and you can directly instantiate them and configure their properties yourself. They all include a few parameterized constructors but these constructors and this approach in general are deprecated in favor of using their builder classes.
+
+The builders support a fluent API with method chaining by returning `this` from mutator methods, and you end up with readable and intuitive code to define triggers, and IDE autocompletion also greatly helps with quickly configuring settings. These include the 'core' builder {apidocs}org/quartz/TriggerBuilder.html[TriggerBuilder] and a scheduler builder that handles the schedule-related configuration for each different trigger type ({apidocs}org/quartz/CalendarIntervalScheduleBuilder.html[CalendarIntervalScheduleBuilder], {apidocs}org/quartz/CronScheduleBuilder.html[CronScheduleBuilder], {apidocs}org/quartz/DailyTimeIntervalScheduleBuilder.html[DailyTimeIntervalScheduleBuilder], and {apidocs}org/quartz/SimpleScheduleBuilder.html[SimpleScheduleBuilder]). {apidocs}org/quartz/DateBuilder.html[DateBuilder] is also available and has a large number of methods that help with working with dates so you don't have to work with the frustrating Java date apis. Using these builders also tends to help avoid making invalid combinations of settings, but that's still possible of course.
+
+=== Using builders to create triggers
+
+The general flow for creating any of the four types of triggers is to start with a call to the static `TriggerBuilder.newTrigger()` method to create the initial `TriggerBuilder` instance, and then call the various instance methods to configure job detail properties and common schedule-related properties, e.g.
+
+[source,groovy]
+----
+TriggerBuilder.newTrigger()
+      .forJob('some job name')
+      .withPriority(3)
+----
+
+Using static imports can help a lot to compact your builder code, e.g.
+
+[source,groovy]
+----
+import static org.quartz.TriggerBuilder.newTrigger
+
+newTrigger()
+      .forJob('some job name')
+      .withPriority(3)
+----
+
+The instance methods are designed to be chained and all mutator methods return `this` instead of being `void`; this isn't required but is the preferred way to work with the builders, so all of the examples will use this approach. At some point in the method call chain you can join in a schedule builder with a call to `withSchedule()`, e.g.
+
+[source,groovy]
+----
+import static org.quartz.CronScheduleBuilder.dailyAtHourAndMinute
+import static org.quartz.TriggerBuilder.newTrigger
+
+newTrigger()
+      .forJob('some job name')
+      .withPriority(3)
+      .withSchedule(dailyAtHourAndMinute(2, 30))
+----
+
+The schedule builders have one or more static methods that are used to create an instance with all of the initial properties required for the particular schedule pattern. In this example I used a method that will implicitly generate a CRON expression using the three properties I provided (daily repeat, repeat hour, and repeat minute) but I could have used a different initializing method for weekly repeating, monthly, etc., or the simplest option, providing a CRON expression directly:
+
+[source,groovy]
+----
+import static org.quartz.CronScheduleBuilder.cronSchedule
+import static org.quartz.TriggerBuilder.newTrigger
+
+newTrigger()
+      .forJob('some job name')
+      .withPriority(3)
+      .withSchedule(cronSchedule('0 15 10 * * ?'))
+      .build()
+----
+
+Once everything is configured, call `build()` to instantiate and configure the trigger type associated with the schedule builder you used:
+
+[source,groovy]
+----
+import org.quartz.CronTrigger
+
+import static org.quartz.CronScheduleBuilder.dailyAtHourAndMinute
+import static org.quartz.TriggerBuilder.newTrigger
+
+CronTrigger cronTrigger = newTrigger()
+      .forJob('some job name')
+      .withPriority(3)
+      .withSchedule(dailyAtHourAndMinute(2, 30))
+      .build()
+----
+
+The builders use generics, so in the example above no cast is needed even if your code is annotated with `@CompileStatic`.
+
+The following sections describe the various initial static methods and subsequent instance methods for each of the builders
+
+=== CalendarIntervalScheduleBuilder
+
+==== Method Summary
+
+[source,groovy]
+.Listing {counter:listing}. CalendarIntervalScheduleBuilder static methods
+----
+static CalendarIntervalScheduleBuilder calendarIntervalSchedule()
+----
+
+[source,groovy]
+.Listing {counter:listing}. CalendarIntervalScheduleBuilder instance methods
+----
+// interval, IntervalUnit
+
+CalendarIntervalScheduleBuilder withInterval(int interval, IntervalUnit unit)
+CalendarIntervalScheduleBuilder withIntervalInDays(int intervalInDays)
+CalendarIntervalScheduleBuilder withIntervalInHours(int intervalInHours)
+CalendarIntervalScheduleBuilder withIntervalInMinutes(int intervalInMinutes)
+CalendarIntervalScheduleBuilder withIntervalInMonths(int intervalInMonths)
+CalendarIntervalScheduleBuilder withIntervalInSeconds(int intervalInSeconds)
+CalendarIntervalScheduleBuilder withIntervalInWeeks(int intervalInWeeks)
+CalendarIntervalScheduleBuilder withIntervalInYears(int intervalInYears)
+
+// misfireInstruction
+
+CalendarIntervalScheduleBuilder withMisfireHandlingInstructionIgnoreMisfires()
+CalendarIntervalScheduleBuilder withMisfireHandlingInstructionDoNothing()
+CalendarIntervalScheduleBuilder withMisfireHandlingInstructionFireAndProceed()
+
+// TimeZone
+
+CalendarIntervalScheduleBuilder inTimeZone(TimeZone timezone)
+
+// preserveHourOfDayAcrossDaylightSavings
+
+CalendarIntervalScheduleBuilder preserveHourOfDayAcrossDaylightSavings(boolean preserveHourOfDay)
+
+// skipDayIfHourDoesNotExist
+CalendarIntervalScheduleBuilder skipDayIfHourDoesNotExist(boolean skipDay)
+----
+
+.Corresponding BuilderFactory methods/properties
+[cols="50,50"]
+|====================
+| *Builder method* | *BuilderFactory methods/properties*
+
+|`static calendarIntervalSchedule`
+|N/A, this is always called because it's the only static builder method
+
+|`withInterval`
+|`interval`, `unit`
+
+|`withIntervalInMinutes`
+|`intervalInMinutes`
+
+|`withIntervalInHours`
+|`intervalInHours`
+
+|`withIntervalInDays`
+|`intervalInDays`
+
+|`withIntervalInWeeks`
+|`intervalInWeeks`
+
+|`withIntervalInMonths`
+|`intervalInMonths`
+
+|`withIntervalInYears`
+|`intervalInYears`
+
+|`withMisfireHandlingInstructionIgnoreMisfires`
+|`misfireHandling(IgnoreMisfires)`
+
+|`withMisfireHandlingInstructionDoNothing`
+|`misfireHandling(DoNothing)`
+
+|`withMisfireHandlingInstructionFireAndProceed`
+|`misfireHandling(FireAndProceed)`
+
+|`preserveHourOfDayAcrossDaylightSavings`
+|`preserveHourOfDay()`
+
+|`skipDayIfHourDoesNotExist`
+|`skipDay`
+
+|====================
+
+Use these static imports when using these `BuilderFactory` methods:
+
+[source,groovy]
+----
+grails.plugin.schwartz.builder.MisfireHandling.*
+org.quartz.DateBuilder.IntervalUnit.*
+----
+
+=== CronScheduleBuilder
+
+==== Method Summary
+
+[source,groovy]
+.Listing {counter:listing}. CronScheduleBuilder static methods
+----
+static CronScheduleBuilder atHourAndMinuteOnGivenDaysOfWeek(int hour, int minute, Integer... daysOfWeek)
+static CronScheduleBuilder cronSchedule(CronExpression cronExpression)
+static CronScheduleBuilder cronSchedule(String cronExpression)
+static CronScheduleBuilder cronScheduleNonvalidatedExpression(String cronExpression)
+static CronScheduleBuilder dailyAtHourAndMinute(int hour, int minute)
+static CronScheduleBuilder monthlyOnDayAndHourAndMinute(int dayOfMonth, int hour, int minute)
+static CronScheduleBuilder weeklyOnDayAndHourAndMinute(int dayOfWeek, int hour, int minute)
+----
+
+[source,groovy]
+.Listing {counter:listing}. CronScheduleBuilder instance methods
+----
+// timeZone
+
+CronScheduleBuilder inTimeZone(TimeZone timezone)
+
+// misfireInstruction
+
+CronScheduleBuilder withMisfireHandlingInstructionIgnoreMisfires()
+CronScheduleBuilder withMisfireHandlingInstructionDoNothing()
+CronScheduleBuilder withMisfireHandlingInstructionFireAndProceed()
+----
+
+.Corresponding BuilderFactory methods/properties
+[cols="50,50"]
+|====================
+| *Builder method* | *BuilderFactory methods/properties*
+
+|`static cronSchedule(String)`
+|`cronSchedule`
+
+|`static cronScheduleNonvalidatedExpression`
+|`cronScheduleNonvalidated`
+
+|`static cronSchedule(CronExpression)`
+|`cronExpression`
+
+|`static dailyAtHourAndMinute`
+|`hourAndMinuteMode(DailyAt), hour, minute`
+
+|`static atHourAndMinuteOnGivenDaysOfWeek`
+|`hourAndMinuteMode(DaysOfWeek), hour, minute, days`
+
+|`static weeklyOnDayAndHourAndMinute`
+|`hourAndMinuteMode(Weekly), day, hour, minute`
+
+|`static monthlyOnDayAndHourAndMinute`
+|`hourAndMinuteMode(Monthly), day, hour, minute`
+
+|`inTimeZone`
+|`timeZone`
+
+|`withMisfireHandlingInstructionIgnoreMisfires`
+|`misfireHandling(IgnoreMisfires)`
+
+|`withMisfireHandlingInstructionDoNothing`
+|`misfireHandling(DoNothing)`
+
+|`withMisfireHandlingInstructionFireAndProceed`
+|`misfireHandling(FireAndProceed)`
+
+|====================
+
+Use these static imports when using these `BuilderFactory` methods:
+
+[source,groovy]
+----
+grails.plugin.schwartz.builder.HourAndMinuteMode.*
+grails.plugin.schwartz.builder.MisfireHandling.*
+org.quartz.DateBuilder.SUNDAY
+org.quartz.DateBuilder.MONDAY
+...
+org.quartz.DateBuilder.SATURDAY
+----
+
+=== DailyTimeIntervalScheduleBuilder
+
+==== Method Summary
+
+[source,groovy]
+.Listing {counter:listing}. DailyTimeIntervalScheduleBuilder static methods
+----
+static DailyTimeIntervalScheduleBuilder dailyTimeIntervalSchedule()
+----
+
+[source,groovy]
+.Listing {counter:listing}. DailyTimeIntervalScheduleBuilder instance methods
+----
+// interval
+
+DailyTimeIntervalScheduleBuilder withInterval(int interval, IntervalUnit unit)
+DailyTimeIntervalScheduleBuilder withIntervalInHours(int intervalInHours)
+DailyTimeIntervalScheduleBuilder withIntervalInMinutes(int intervalInMinutes)
+DailyTimeIntervalScheduleBuilder withIntervalInSeconds(int intervalInSeconds)
+
+// IntervalUnit
+
+DailyTimeIntervalScheduleBuilder withInterval(int interval, IntervalUnit unit)
+
+// daysOfWeek
+
+DailyTimeIntervalScheduleBuilder onDaysOfTheWeek(Integer ... onDaysOfWeek)
+DailyTimeIntervalScheduleBuilder onDaysOfTheWeek(Set<Integer> onDaysOfWeek)
+DailyTimeIntervalScheduleBuilder onEveryDay()
+DailyTimeIntervalScheduleBuilder onMondayThroughFriday()
+DailyTimeIntervalScheduleBuilder onSaturdayAndSunday()
+
+// startTimeOfDay
+
+DailyTimeIntervalScheduleBuilder startingDailyAt(TimeOfDay timeOfDay)
+
+// endTimeOfDay
+
+DailyTimeIntervalScheduleBuilder endingDailyAfterCount(int count)
+DailyTimeIntervalScheduleBuilder endingDailyAt(TimeOfDay timeOfDay)
+
+// repeatCount
+
+DailyTimeIntervalScheduleBuilder withRepeatCount(int repeatCount)
+
+// misfireInstruction
+
+DailyTimeIntervalScheduleBuilder withMisfireHandlingInstructionDoNothing()
+DailyTimeIntervalScheduleBuilder withMisfireHandlingInstructionFireAndProceed()
+DailyTimeIntervalScheduleBuilder withMisfireHandlingInstructionIgnoreMisfires()
+----
+
+.Corresponding BuilderFactory methods/properties
+[cols="50,50"]
+|====================
+| *Builder method* | *BuilderFactory methods/properties*
+
+|`static dailyTimeIntervalSchedule`
+|N/A, this is always called because it's the only static builder method
+
+|`withInterval`
+|`interval, unit`
+
+|`withIntervalInSeconds`
+|`intervalInSeconds`
+
+|`withIntervalInMinutes`
+|`intervalInMinutes`
+
+|`withIntervalInHours`
+|`intervalInHours`
+
+|`onDaysOfTheWeek(Set<Integer>)`
+|not used; Collections and single ints are converted to `Integer[]`
+
+|`onDaysOfTheWeek(Integer ...)`
+|`days`
+
+|`onMondayThroughFriday`
+|`mondayThroughFriday()`
+
+|`onSaturdayAndSunday`
+|`saturdayAndSunday()`
+
+|`onEveryDay`
+|`everyDay()`
+
+|`startingDailyAt`
+|`dailyStart`
+
+|`endingDailyAt`
+|`dailyEnd`
+
+|`endingDailyAfterCount`
+|`dailyEndAfterCount`
+
+|`withMisfireHandlingInstructionIgnoreMisfires`
+|`misfireHandling(IgnoreMisfires)`
+
+|`withMisfireHandlingInstructionDoNothing`
+|`misfireHandling(DoNothing)`
+
+|`withMisfireHandlingInstructionFireAndProceed`
+|`misfireHandling(FireAndProceed)`
+
+|`withRepeatCount`
+|`repeatCount`
+
+|====================
+
+Use these static imports when using these `BuilderFactory` methods:
+
+[source,groovy]
+----
+grails.plugin.schwartz.builder.MisfireHandling.*
+----
+
+=== SimpleScheduleBuilder
+
+==== Method Summary
+
+[source,groovy]
+.Listing {counter:listing}. SimpleScheduleBuilder static methods
+----
+static SimpleScheduleBuilder repeatHourlyForever()
+static SimpleScheduleBuilder repeatHourlyForever(int hours)
+static SimpleScheduleBuilder repeatHourlyForTotalCount(int count)
+static SimpleScheduleBuilder repeatHourlyForTotalCount(int count, int hours)
+static SimpleScheduleBuilder repeatMinutelyForever()
+static SimpleScheduleBuilder repeatMinutelyForever(int minutes)
+static SimpleScheduleBuilder repeatMinutelyForTotalCount(int count)
+static SimpleScheduleBuilder repeatMinutelyForTotalCount(int count, int minutes)
+static SimpleScheduleBuilder repeatSecondlyForever()
+static SimpleScheduleBuilder repeatSecondlyForever(int seconds)
+static SimpleScheduleBuilder repeatSecondlyForTotalCount(int count)
+static SimpleScheduleBuilder repeatSecondlyForTotalCount(int count, int seconds)
+static SimpleScheduleBuilder simpleSchedule()
+----
+
+[source,groovy]
+.Listing {counter:listing}. SimpleScheduleBuilder instance methods
+----
+// interval
+
+SimpleScheduleBuilder withIntervalInHours(int intervalInHours)
+SimpleScheduleBuilder withIntervalInMilliseconds(long intervalInMillis)
+SimpleScheduleBuilder withIntervalInMinutes(int intervalInMinutes)
+SimpleScheduleBuilder withIntervalInSeconds(int intervalInSeconds)
+
+// repeatCount
+
+SimpleScheduleBuilder repeatForever()
+SimpleScheduleBuilder withRepeatCount(int triggerRepeatCount)
+
+// misfireInstruction
+
+SimpleScheduleBuilder withMisfireHandlingInstructionFireNow()
+SimpleScheduleBuilder withMisfireHandlingInstructionIgnoreMisfires()
+SimpleScheduleBuilder withMisfireHandlingInstructionNextWithExistingCount()
+SimpleScheduleBuilder withMisfireHandlingInstructionNextWithRemainingCount()
+SimpleScheduleBuilder withMisfireHandlingInstructionNowWithExistingCount()
+SimpleScheduleBuilder withMisfireHandlingInstructionNowWithRemainingCount()
+----
+
+.Corresponding BuilderFactory methods/properties
+[cols="50,50"]
+|====================
+| *Builder method* | *BuilderFactory methods/properties*
+
+|`static simpleSchedule`
+|`called if RepeatMode isn't specified`
+
+|`static repeatMinutelyForever`
+|`repeatMode(Minutes), repeatForever()`
+
+|`static repeatMinutelyForever(minutes)`
+|`repeatMode(Minutes), repeatForever(), minutes`
+
+|`static repeatSecondlyForever`
+|`repeatMode(Seconds), repeatForever()`
+
+|`static repeatSecondlyForever(seconds)`
+|`repeatMode(Seconds), repeatForever(), seconds`
+
+|`static repeatHourlyForever`
+|`repeatMode(Hours), repeatForever()`
+
+|`static repeatHourlyForever(hours)`
+|`repeatMode(Hours), repeatForever(), hours`
+
+|`static repeatMinutelyForTotalCount(count)`
+|`repeatMode(Minutes), totalCount`
+
+|`static repeatMinutelyForTotalCount(count, minutes)`
+|`repeatMode(Minutes), totalCount, minutes`
+
+|`static repeatSecondlyForTotalCount(count)`
+|`repeatMode(Seconds), totalCount`
+
+|`static repeatSecondlyForTotalCount(count, seconds)`
+|`repeatMode(Seconds), totalCount, seconds`
+
+|`static repeatHourlyForTotalCount(count)`
+|`repeatMode(Hours), totalCount`
+
+|`static repeatHourlyForTotalCount(count, hours)`
+|`repeatMode(Hours), totalCount, hours`
+
+|`withIntervalInMilliseconds`
+|`intervalInMillis`
+
+|`withIntervalInSeconds`
+|`intervalInSeconds`
+
+|`withIntervalInMinutes`
+|`intervalInMinutes`
+
+|`withIntervalInHours`
+|`intervalInHours`
+
+|`withRepeatCount`
+|`repeatCount`
+
+|`repeatForever`
+|`repeatForever() (or omit since it's the default)`
+
+|`withMisfireHandlingInstructionIgnoreMisfires`
+|`simpleMisfireHandling(IgnoreMisfires)`
+
+|`withMisfireHandlingInstructionFireNow`
+|`simpleMisfireHandling(FireNow)`
+
+|`withMisfireHandlingInstructionNextWithExistingCount`
+|`simpleMisfireHandling(NextWithExistingCount)`
+
+|`withMisfireHandlingInstructionNextWithRemainingCount`
+|`simpleMisfireHandling(NextWithRemainingCount)`
+
+|`withMisfireHandlingInstructionNowWithExistingCount`
+|`simpleMisfireHandling(NowWithExistingCount)`
+
+|`withMisfireHandlingInstructionNowWithRemainingCount`
+|`simpleMisfireHandling(NowWithRemainingCount)`
+
+|====================
+
+Use these static imports when using these `BuilderFactory` methods:
+
+[source,groovy]
+----
+grails.plugin.schwartz.builder.SimpleMisfireHandling.*
+grails.plugin.schwartz.builder.RepeatMode.*
+----
+
+=== TriggerBuilder
+
+==== Method Summary
+
+[source,groovy]
+.Listing {counter:listing}. TriggerBuilder static methods
+----
+static TriggerBuilder<Trigger> newTrigger()
+----
+
+[source,groovy]
+.Listing {counter:listing}. TriggerBuilder instance methods
+----
+// TriggerKey
+
+TriggerBuilder<T> withIdentity(String name)
+TriggerBuilder<T> withIdentity(String name, String group)
+TriggerBuilder<T> withIdentity(TriggerKey triggerKey)
+
+// description
+
+TriggerBuilder<T> withDescription(String triggerDescription)
+
+// priority
+
+TriggerBuilder<T> withPriority(int triggerPriority)
+
+// calendarName
+
+TriggerBuilder<T> modifiedByCalendar(String calName)
+
+// startTime
+
+TriggerBuilder<T> startAt(Date triggerStartTime)
+TriggerBuilder<T> startNow()
+
+// endTime
+
+TriggerBuilder<T> endAt(Date triggerEndTime)
+
+// scheduleBuilder
+
+<SBT extends T> TriggerBuilder<SBT> withSchedule(ScheduleBuilder<SBT> schedBuilder)
+
+// JobKey
+
+TriggerBuilder<T> forJob(JobDetail jobDetail)
+TriggerBuilder<T> forJob(JobKey keyOfJobToFire)
+TriggerBuilder<T> forJob(String jobName)
+TriggerBuilder<T> forJob(String jobName, String jobGroup)
+
+// JobDataMap
+
+TriggerBuilder<T> usingJobData(JobDataMap newJobDataMap)
+TriggerBuilder<T> usingJobData(String dataKey, Boolean value)
+TriggerBuilder<T> usingJobData(String dataKey, Double value)
+TriggerBuilder<T> usingJobData(String dataKey, Float value)
+TriggerBuilder<T> usingJobData(String dataKey, Integer value)
+TriggerBuilder<T> usingJobData(String dataKey, Long value)
+TriggerBuilder<T> usingJobData(String dataKey, String value)
+----
+
+.Corresponding BuilderFactory methods/properties
+[cols="50,50"]
+|====================
+| *Builder method* | *BuilderFactory methods/properties*
+
+|`static newTrigger`
+|N/A, this is always called because it's the only static builder method
+
+|`withIdentity(name)`
+|`name`
+
+|`withIdentity(name, group)`
+|`name, group`
+
+|`withIdentity(TriggerKey)`
+|`triggerKey`
+
+|`withDescription`
+|`description`
+
+|`withPriority`
+|`priority`
+
+|`modifiedByCalendar`
+|`calendarName`
+
+|`startAt`
+|`startAt`
+
+|`startNow`
+|`startNow()` (or omit since it's the default)
+
+|`endAt`
+|`endAt`
+
+|`withSchedule`
+|`N/A`
+
+|`forJob(JobKey)`
+|`jobKey`
+
+|`forJob(jobName)`
+|`jobName`
+
+|`forJob(jobName, jobGroup)`
+|`jobName, jobGroup`
+
+|`forJob(JobDetail)`
+|`jobDetail`
+
+|`usingJobData(String, String)`
+|`none, use jobData Map`
+
+|`usingJobData(String, Integer)`
+|`none, use jobData Map`
+
+|`usingJobData(String, Long)`
+|`none, use jobData Map`
+
+|`usingJobData(String, Float)`
+|`none, use jobData Map`
+
+|`usingJobData(String, Double)`
+|`none, use jobData Map`
+
+|`usingJobData(String, Boolean)`
+|`none, use jobData Map`
+
+|`usingJobData(JobDataMap)`
+|`jobDataMap`
+
+|====================
+
+=== DateBuilder
+
+==== Method Summary
+
+[source,groovy]
+.Listing {counter:listing}. DateBuilder static methods
+----
+static DateBuilder newDate()
+static DateBuilder newDateInTimezone(TimeZone tz)
+static DateBuilder newDateInLocale(Locale lc)
+static DateBuilder newDateInTimeZoneAndLocale(TimeZone tz, Locale lc)
+----
+
+[source,groovy]
+.Listing {counter:listing}. DateBuilder instance methods
+----
+// TimeZone
+
+DateBuilder inTimeZone(TimeZone timezone)
+
+// Locale
+
+DateBuilder inLocale(Locale locale)
+
+// month
+
+DateBuilder inMonth(int inMonth)
+DateBuilder inMonthOnDay(int inMonth, int onDay)
+
+// day
+
+DateBuilder onDay(int onDay)
+DateBuilder inMonthOnDay(int inMonth, int onDay)
+
+// year
+
+DateBuilder inYear(int inYear)
+
+// hour
+
+DateBuilder atHourOfDay(int atHour)
+DateBuilder atHourMinuteAndSecond(int atHour, int atMinute, int atSecond)
+
+// minute
+
+DateBuilder atMinute(int atMinute)
+DateBuilder atHourMinuteAndSecond(int atHour, int atMinute, int atSecond)
+
+// second
+
+DateBuilder atSecond(int atSecond)
+DateBuilder atHourMinuteAndSecond(int atHour, int atMinute, int atSecond)
+----
+
+[source,groovy]
+.Listing {counter:listing}. DateBuilder static utility methods
+----
+static DateBuilder newDate()
+static DateBuilder newDateInTimezone(TimeZone tz)
+static DateBuilder newDateInLocale(Locale lc)
+static DateBuilder newDateInTimeZoneAndLocale(TimeZone tz, Locale lc)
+
+static Date dateOf(int hour, int minute, int second)
+static Date dateOf(int hour, int minute, int second, int dayOfMonth, int month)
+static Date dateOf(int hour, int minute, int second, int dayOfMonth, int month, int year)
+static Date evenHourDate(Date date)
+static Date evenHourDateAfterNow()
+static Date evenHourDateBefore(Date date)
+static Date evenMinuteDate(Date date)
+static Date evenMinuteDateAfterNow()
+static Date evenMinuteDateBefore(Date date)
+static Date evenSecondDate(Date date)
+static Date evenSecondDateAfterNow()
+static Date evenSecondDateBefore(Date date)
+static Date futureDate(int interval, IntervalUnit unit)
+static Date nextGivenMinuteDate(Date date, int minuteBase)
+static Date nextGivenSecondDate(Date date, int secondBase)
+static Date todayAt(int hour, int minute, int second)
+static Date tomorrowAt(int hour, int minute, int second)
+static Date translateTime(Date date, TimeZone src, TimeZone dest)
+----
+
+=== BuilderFactory
+
+Quartz added trigger builder classes in 2.0 that have chainable methods (the mutator methods return `this`) and provide a fluent and intuitive approach to creating triggers. In practice I found several methods to be a bit verbose, and thought it would be better in many cases to combine all of the builders so there would be a single starting point for all types of triggers. The plugin's `BuilderFactory` (an awkward name, but certainly better than `BuilderBuilder` ...) provides this.
+
+If you're building triggers inside a `SchwartzJob` class the best way to initialize a `BuilderFactory` is with one of the two `builder()` methods since they set the job name and group, and optionally the trigger name for you:
+
+[source,groovy]
+----
+Trigger trigger = builder('mytrigger').some().builder().methods().build()
+----
+
+You can also start with just the constructor and do everything explicitly, e.g.
+
+[source,groovy]
+----
+Trigger trigger = new BuilderFactory().some().builder().methods().build()
+----
+
+All of the options in the various triggers are configurable as properties or chainable methods, so the standard Groovy Map constructor is an option also, either explicitly followed by a call to the `build()` instance method, or in one step using the static `build(Map)` method, e.g.
+
+[source,groovy]
+----
+Trigger trigger = BuilderFactory.build(
+      name: triggerName, group: triggerGroup, jobName: jobName, jobGroup: jobGroup,
+      startAt: start, endAt: end, cronSchedule: cron, timeZone: timeZone,
+      description: description, jobDataMap: jobDataMap, calendarName: calendarName,
+      misfireHandling: IgnoreMisfires, priority: priority)
+----
+
+which is equivalent to
+
+[source,groovy]
+----
+Trigger trigger = builder()
+   .name(triggerName)
+   .group(triggerGroup)
+   .jobName(jobName)
+   .jobGroup(jobGroup)
+   .startAt(start)
+   .endAt(end)
+   .cronSchedule(cron)
+   .timeZone(timeZone)
+   .description(description)
+   .jobDataMap(jobDataMap)
+   .calendarName(calendarName)
+   .priority(priority)
+   .misfireHandling(IgnoreMisfires)
+   .build()
+----
+
+Because all trigger properties and methods are available when using `BuilderFactory`, it is possible to inadvertently set properties or call methods that apply to two or more trigger types; this is invalid and when you call the `build()` method, the code that validates the configured properties and determines which type of trigger to build will detect the problem and throw an exception with detailed information about what values were applicable for the different trigger types to help you to fix the mistakes.
+
+The following tables summarize the various methods and corresponding chainable methods that are available for the different trigger types, and the common non-schedule-related methods applicable to all trigger types.
+
+.CalendarIntervalTrigger schedule properties and methods
+[cols="40,60"]
+|====================
+| *Property* | *Method*
+
+|`Integer interval`
+|`BuilderFactory interval(int _)`
+
+|`Integer intervalInDays`
+|`BuilderFactory intervalInDays(int _)`
+
+|`Integer intervalInHours`
+|`BuilderFactory intervalInHours(int _)`
+
+|`Integer intervalInMinutes`
+|`BuilderFactory intervalInMinutes(int _)`
+
+|`Integer intervalInMonths`
+|`BuilderFactory intervalInMonths(int _)`
+
+|`Integer intervalInSeconds`
+|`BuilderFactory intervalInSeconds(int _)`
+
+|`Integer intervalInWeeks`
+|`BuilderFactory intervalInWeeks(int _)`
+
+|`Integer intervalInYears`
+|`BuilderFactory intervalInYears(int _)`
+
+|`MisfireHandling misfireHandling`
+|`BuilderFactory misfireHandling(MisfireHandling _)`
+
+|`Boolean preserveHour`
+|`BuilderFactory preserveHour(boolean _ = true)`
+
+|`Boolean skipDay`
+|`BuilderFactory skipDay(boolean _ = true)`
+
+|`TimeZone timeZone`
+|`BuilderFactory timeZone(TimeZone _)`
+
+|`IntervalUnit unit`
+|`BuilderFactory unit(IntervalUnit _)`
+
+|====================
+
+.CronTrigger schedule properties and methods
+[cols="40,60"]
+|====================
+| *Property* | *Method*
+
+|`CronExpression cronExpression`
+|`BuilderFactory cronExpression(CronExpression _)`
+
+|`String cronSchedule`
+|`BuilderFactory cronSchedule(String _)`
+
+|`String cronScheduleNonvalidated`
+|`BuilderFactory cronScheduleNonvalidated(String _)`
+
+|`Integer day`
+|`BuilderFactory day(int _)`
+
+|`def days`
+|`BuilderFactory days(_)` (also `void setDays(daysOfWeek)` which accepts a single int, an `Integer[]` array, or `Collection` and converts to `Integer[]`, and `Integer[] getDays()`)
+
+|`Integer hour`
+|`BuilderFactory hour(int _)`
+
+|`HourAndMinuteMode hourAndMinuteMode`
+|`BuilderFactory hourAndMinuteMode(HourAndMinuteMode _)`
+
+|`Integer minute`
+|`BuilderFactory minute(int _)`
+
+|`MisfireHandling misfireHandling`
+|`BuilderFactory misfireHandling(MisfireHandling _)`
+
+|`TimeZone timeZone`
+|`BuilderFactory timeZone(TimeZone _)`
+
+|====================
+
+.DailyTimeIntervalTrigger schedule properties and methods
+[cols="40,60"]
+|====================
+| *Property* | *Method*
+
+|`TimeOfDay dailyEnd`
+|`BuilderFactory dailyEnd(TimeOfDay _)`
+
+|`Integer dailyEndAfterCount`
+|`BuilderFactory dailyEndAfterCount(int _)`
+
+|`TimeOfDay dailyStart`
+|`BuilderFactory dailyStart(TimeOfDay _)`
+
+|`def days`
+|`BuilderFactory days(_)` (also `void setDays(daysOfWeek)` which accepts a single int, an `Integer[]` array, or `Collection` and converts to `Integer[]`, and `Integer[] getDays()`)
+
+|`Boolean everyDay`
+|`BuilderFactory everyDay(boolean _ = true)`
+
+|`Integer interval`
+|`BuilderFactory interval(int _)`
+
+|`Integer intervalInHours`
+|`BuilderFactory intervalInHours(int _)`
+
+|`Integer intervalInMinutes`
+|`BuilderFactory intervalInMinutes(int _)`
+
+|`Integer intervalInSeconds`
+|`BuilderFactory intervalInSeconds(int _)`
+
+|`MisfireHandling misfireHandling`
+|`BuilderFactory misfireHandling(MisfireHandling _)`
+
+|`Boolean mondayThroughFriday`
+|`BuilderFactory mondayThroughFriday(boolean _ = true)`
+
+|`Integer repeatCount`
+|`BuilderFactory repeatCount(int _)`
+
+|`Boolean saturdayAndSunday`
+|`BuilderFactory saturdayAndSunday(boolean _ = true)`
+
+|`IntervalUnit unit`
+|`BuilderFactory unit(IntervalUnit _)`
+
+|====================
+
+.SimpleTrigger properties and methods
+[cols="40,60"]
+|====================
+| *Property* | *Method*
+
+|`Integer hours`
+|`BuilderFactory hours(int _)`
+
+|`Integer intervalInHours`
+|`BuilderFactory intervalInHours(int _)`
+
+|`Long intervalInMillis`
+|`BuilderFactory intervalInMillis(long _)`
+
+|`Integer intervalInMinutes`
+|`BuilderFactory intervalInMinutes(int _)`
+
+|`Integer intervalInSeconds`
+|`BuilderFactory intervalInSeconds(int _)`
+
+|`Integer minutes`
+|`BuilderFactory minutes(int _)`
+
+|`MisfireHandling misfireHandling`
+|`BuilderFactory misfireHandling(MisfireHandling _)`
+
+|`Integer repeatCount`
+|`BuilderFactory repeatCount(int _)`
+
+|`Boolean repeatForever`
+|`BuilderFactory repeatForever(boolean _ = true)`
+
+|`RepeatMode repeatMode`
+|`BuilderFactory repeatMode(RepeatMode _)`
+
+|`Integer seconds`
+|`BuilderFactory seconds(int _)`
+
+|`Integer totalCount`
+|`BuilderFactory totalCount(int _)`
+
+|====================
+
+.Trigger properties and methods
+[cols="40,60"]
+|====================
+| *Property* | *Method*
+
+|`String calendarName`
+|`BuilderFactory calendarName(String _)`
+
+|`String description`
+|`BuilderFactory description(String _)`
+
+|`Date endAt`
+|`BuilderFactory endAt(Date _)`
+
+|`String group`
+|`BuilderFactory group(String _)`
+
+|`SchwartzJob job`
+|`BuilderFactory job(SchwartzJob _)`
+
+|`Map<String, ?> jobData`
+|`BuilderFactory jobData(Map<String, ?> _)`
+
+|`JobDataMap jobDataMap`
+|`BuilderFactory jobDataMap(JobDataMap _)`
+
+|`JobDetail jobDetail`
+|`BuilderFactory jobDetail(JobDetail _)`
+
+|`String jobGroup`
+|`BuilderFactory jobGroup(String _)`
+
+|`JobKey jobKey`
+|`BuilderFactory jobKey(JobKey _)`
+
+|`String jobName`
+|`BuilderFactory jobName(String _)`
+
+|`TriggerKey key`
+|`BuilderFactory key(TriggerKey _)`
+
+|`String name`
+|`BuilderFactory name(String _)`
+
+|`Integer priority`
+|`BuilderFactory priority(int _)`
+
+|`Date startAt`
+|`BuilderFactory startAt(Date _)`
+
+|====================
+
+.Utility methods
+[cols="40,60"]
+|====================
+| *Method* | *Description*
+
+|`BuilderFactory startDelay(int millis)`
+|Chainable builder method that sets the start time of the trigger as the current time plus the specified milliseconds
+
+|`void setStartDelay(int millis)`
+|Traditional setter method that sets the start time of the trigger as the current time plus the specified milliseconds
+
+|`BuilderFactory startNow()`
+|Essentially a no-op since the default start date is `new Date()`.
+
+|`BuilderFactory noRepeat()`
+|Resets the repeat count to zero (the default is to repeat forever)
+
+|====================

@@ -1,0 +1,28 @@
+[[listeners]]
+== Listeners
+
+The plugin includes a few implementations of the Quartz listener interfaces and support for others. The listeners are all enabled by default but can be disabled (and additional listeners can be enabled) in the <<configuration>>.
+
+=== com.agileorbit.schwartz.listener.LoggingJobListener
+
+Implements {apidocs}org/quartz/JobListener.html[JobListener] and logs current state information at the debug level for each method.
+
+=== com.agileorbit.schwartz.listener.LoggingTriggerListener
+
+Implements {apidocs}org/quartz/TriggerListener.html[TriggerListener] and logs current state information at the debug level for each method.
+
+=== com.agileorbit.schwartz.listener.LoggingSchedulerListener
+
+Implements {apidocs}org/quartz/SchedulerListener.html[SchedulerListener] and logs method parameter data at the debug level for each method.
+
+=== com.agileorbit.schwartz.listener.ExceptionPrinterJobListener
+
+Implements {apidocs}org/quartz/JobListener.html[JobListener] and logs the `JobKey` and the exception stacktrace if an exception occurs while a job is executing.
+
+=== com.agileorbit.schwartz.listener.SessionBinderJobListener
+
+Implements {apidocs}org/quartz/JobListener.html[JobListener] and works like the web-tier open-session-in-view pattern, binding a GORM session before your job starts and closing it when it finishes. Will be active for each `SchwartzJob` only if the job class returns `true` from its `getSessionRequired()` method (defaults to `true`) defined in the trait.
+
+=== com.agileorbit.schwartz.listener.QuartzListeners
+
+Aggregate interface that implements `JobListener`, `TriggerListener`, and `SchedulerListener`. `com.agileorbit.schwartz.listener.QuartzListenersAdaptor` is an adaptor class that implements `QuartzListeners` and delegates each method to the corresponding method in an instance of {apidocs}org/quartz/listeners/JobListenerSupport.html[JobListenerSupport], {apidocs}org/quartz/listeners/SchedulerListenerSupport.html[SchedulerListenerSupport], or  {apidocs}org/quartz/listeners/TriggerListenerSupport.html[TriggerListenerSupport].

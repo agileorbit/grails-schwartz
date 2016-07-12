@@ -1,0 +1,109 @@
+[[usage]]
+== Usage
+
+Scheduling jobs in Quartz is generally done in two stages. Data about how to run your jobs (the class name and various configuration options including if the job is stateless, durable, etc.) is represented via an implementation of the {apidocs}org/quartz/JobDetail.html[JobDetail] interface. But there is no scheduling information there; that's handled by classes that implement the {apidocs}org/quartz/Trigger.html[Trigger] interface. A job may have just a single `Trigger` with a configured schedule for when it fires, or it could have multiple triggers each using different schedules and possibly trigger-specific configuration. Or there might not be any triggers at all; as long as the job is durable (Quartz deletes non-durable jobs without active triggers) you can register a `JobDetail` and manually trigger the job on-demand, from other triggers, from listeners, etc.
+
+When a trigger fires, an application class must be available to do the work, and that's handled by a class that you create in your application that implements the {apidocs}org/quartz/Job.html[Job] interface. Often job classes are instantiated for every invocation but this isn't a requirement, and the plugin supports using `Job` classes registered as Spring beans. If you use a singleton Spring bean be be careful not to store job-related state in the bean instance unless it won't cause problems across multiple invocations.
+
+=== SchwartzJobFactory
+
+The plugin includes an implementation of the Quartz {apidocs}org/quartz/spi/JobFactory.html[JobFactory] interface, `SchwartzJobFactory`, which manages retrieving Spring bean instances when triggers fire for jobs registered as Spring beans, and instantiating new instances of POGO/POJO classes otherwise. It will also make "`job data`" from multiple sources available to the job classes when they're executing.
+
+Job data has three sources, the global values stored in the {apidocs}org/quartz/Scheduler.html[Scheduler] {apidocs}org/quartz/SchedulerContext.html[SchedulerContext], job-specific values from a {apidocs}org/quartz/JobDataMap.html[JobDataMap] configured for the `JobDetail`, and trigger-specific `JobDataMap` instances configured for individual triggers. When you register the job in the scheduler you can include a `JobDataMap` with whatever information the job needs, or none if that isn't needed. Likewise when scheduling triggers you can store trigger-specific data. The three sources are merged together when a trigger fires and your job instance is created or retrieved as a bean, with global values added first, then the job data, and then the trigger data. This means that job and trigger can both override values from the `SchedulerContext`, and trigger values can override job values.
+
+If you have setters or properties in your job class corresponding to keys in the merged data map, those values will be set for each invocation. This isn't a requirement though, and you can always access all of the merged data from the `JobExecutionContext` instance that is provided for each execution (it's the argument in the `Job` interface `void execute(JobExecutionContext context)` method that all jobs implement).
+
+=== SchwartzJob
+
+The plugin includes a trait, `SchwartzJob`, which you can implement to take advantage of its default settings and configuration which will make creating, registering and managing `JobDetail` and `Trigger` instances a lot simpler. By implementing the trait, `QuartzService` can easily create a `JobDetail` instance using the implementation class as the `jobClass`, and invoking the various getter methods defined in the trait. The initial return values have sensible default values, but you can override any of them by creating the same method in your implementation class with custom values.
+
+The trait also implements the {apidocs}org/quartz/InterruptableJob.html[InterruptableJob] interface and includes an empty `interrupt()` method that you can override for any job class that should perform some actions if they are interrupted.
+
+Quartz requires that a `Job` that is stateful indicate that using two annotations, {apidocs}org/quartz/DisallowConcurrentExecution.html[DisallowConcurrentExecution] and {apidocs}org/quartz/PersistJobDataAfterExecution.html[PersistJobDataAfterExecution]. You can annotate your stateful job classes with these yourself, but the plugin includes another trait, `StatefulSchwartzJob`, which simply extends `SchwartzJob` and includes these annotations. So you can just implement `SchwartzJob` or `StatefulSchwartzJob` as needed.
+
+The trait has one abstract method, `buildTriggers()`, which is invoked from `afterPropertiesSet()` which is called by the Spring `ApplicationContext` if your job is a Spring bean after dependencies have been injected (because the trait implements `InitializingBean`). Create your job's trigger(s) at this point and add them to the `triggers` list defined in the trait to have them auto-registered for you at startup. You can use the plugin's builder support or the Quartz builders directly to create triggers. You don't have to create any triggers though, and can just define an empty method; you can configure and schedule triggers yourself, or trigger jobs on-demand as needed.
+
+Note that using these traits is not required - you can create (or reuse from non-Grails applications) job classes that implement the `Job` interface, and work directly with Quartz, creating and scheduling `JobDetail` and `Trigger` instances yourself. The traits and other helper classes are and are there to reduce the amount of manual configuration required. The plugin supports any implementation of the `Job` interface.
+
+==== SchwartzJob method and property summary
+
+[cols="35,65"]
+|====================
+| *Method/Property* | *Description*
+
+|`QuartzService quartzService`
+|Dependency injection property for the `quartzService` bean; only valid if the job class is a Spring bean (e.g. if it's defined in `grails-app/services` or otherwise registered in Spring). For non-bean job classes the `getQuartzService()` method will retrieve the service from the `ApplicationContext` for you.
+
+|`String getJobName()`
+|Defines the job name for the `JobDetail` that is registered for the class; the default value is the class name without the package
+
+|`String getJobGroup()`
+|Defines the job group for the `JobDetail` that is registered for the class; the default is the Quartz default ("`DEFAULT`")
+
+|`JobKey getJobKey()`
+|Convenience method to create a {apidocs}org/quartz/JobKey.html[JobKey] with the values from `getJobName()` and `getJobGroup()`
+
+|`String getDescription()`
+|Defines the description for the `JobDetail` that is registered for the class; there is no default.
+
+|`boolean getSessionRequired()`
+|If `true`, a listener will be configured to start a GORM session before the job starts and flush and close it after it finishes (similar to the OpenSessionInView pattern used in controllers); defaults to `true`
+
+|`boolean getDurable()`
+|If `true` the job will remain registered even if there are no active triggers associated, otherwise the `JobDetail` will be deleted by Quartz; defaults to `true`.
+
+|`boolean getRequestsRecovery()`
+|If `true` jobs that are executing when the scheduler stops without being properly shut down (e.g. if the app crashes) will execute again at the next startup; defaults to `false`.
+
+|`void interrupt()`
+|This is defined in the `InterruptableJob` interface and can be overridden to add code that runs if the job is interrupted by a call to `scheduler.interrupt()`; the default implementation is empty.
+
+|`void buildTriggers()`
+|Abstract in the trait and must be implemented in application job classes. Provides a hook at startup for creating triggers that should be scheduled automatically. Can be empty if you prefer to schedule triggers yourself, or if you don't need scheduled triggers and will trigger jobs on-demand.
+
+|`List<Trigger> triggers`
+|Add triggers here in `buildTriggers()` to make them available for automatic scheduling.
+
+|`TriggerBuilder builder()`
+|Creates a `TriggerBuilder` with the job name and group configured.
+
+|`TriggerBuilder builder(String triggerName)`
+|Creates a `TriggerBuilder` with the job name and group configured, and with the specified trigger name set.
+
+|`BuilderFactory factory()`
+|Creates a `BuilderFactory` with the job name and group configured.
+
+|`BuilderFactory factory(String triggerName)`
+|Creates a `BuilderFactory` with the job name and group configured, and with the specified trigger name set.
+
+|`JobBuilder jobBuilder()`
+|Creates a `JobBuilder` configured from current values from the class.
+
+|`void updateJobDetail()`
+|Updates the data in the Scheduler for the class using values from the getter methods.
+
+|`void updateJobDetail(JobDetail jobDetail)`
+|Updates the data in the Scheduler for the class using values from the `JobDetail`.
+
+|`JobDetail getStoredJobDetail()`
+|Retrieve the current stored job detail for the class.
+
+|`List<? extends Trigger> getStoredTriggers()`
+|Retrieves all triggers registered for the class.
+
+|`Date schedule(Trigger trigger)`
+|Adds or updates the trigger in the scheduler, returning the next fire time.
+
+|`void triggerJob()`
+|Executes the job immediately.
+
+|`void triggerJob(Map jobData)`
+|Executes the job immediately, with the specified job data available during execution.
+
+|`QuartzService getQuartzService()`
+|Called implicitly for job classes that aren't Spring beans to retrieve the service from the `ApplicationContext` to ensure that the service is available in methods that use it.
+
+|`void afterPropertiesSet()`
+|This is defined in the `InitializingBean` interface and is called by the `ApplicationContext` at startup; calls `buildTriggers()` to let classes define triggers to be automatically scheduled.
+
+|====================
