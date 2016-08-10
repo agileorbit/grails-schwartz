@@ -1,0 +1,34 @@
+# EditorConfig is awesome: http://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+# Matches multiple files with brace expansion notation
+# Set default charset
+[*.{java,groovy}]
+charset = utf-8
+
+# tab indentation
+[*.java]
+indent_style = tab
+indent_size = 3
+
+# tab indentation
+[*.md]
+indent_style = space
+indent_size = 4
+
+# 4 space indentation
+[*.groovy]
+indent_style = tab
+indent_size = 3
+
+# 2 space indentation
+[*.{gradle,json,yml}]
+indent_style = tab
+indent_size = 2
