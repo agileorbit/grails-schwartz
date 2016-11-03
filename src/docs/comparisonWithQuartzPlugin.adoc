@@ -150,5 +150,9 @@ void buildTriggers() {
    triggers << factory('run every day one second before midnight')
          .startAt(todayAt(23,59,59))
          .intervalInDays(1).build()
+         
+   triggers << factory('run every day at 11:00 AM')
+         .startAt( todayAt(11,00,00).before(new Date()) ? tomorrowAt(11,00,00) : todayAt(11,00,00) )
+         .intervalInDays(1).build()
 }
 ----
