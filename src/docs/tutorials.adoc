@@ -401,6 +401,8 @@ quartz {
 }
 ----
 
+NOTE: Imports must be in `grails-app/conf/runtime.groovy` (Grails 3.1.11+)
+
 [[clusterTutorial]]
 === Cluster Tutorial
 
