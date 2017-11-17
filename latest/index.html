@@ -425,7 +425,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h1>Schwartz Plugin - Reference Documentation</h1>
 <div class="details">
 <span id="author" class="author">Burt Beckwith</span><br>
-<span id="revnumber">version 1.0.0</span>
+<span id="revnumber">version 1.0.1</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
@@ -1070,6 +1070,10 @@ void buildTriggers() {
 
    triggers &lt;&lt; factory('run every day one second before midnight')
          .startAt(todayAt(23,59,59))
+         .intervalInDays(1).build()
+
+   triggers &lt;&lt; factory('run every day at 11:00 AM')
+         .startAt( todayAt(11,00,00).before(new Date()) ? tomorrowAt(11,00,00) : todayAt(11,00,00) )
          .intervalInDays(1).build()
 }</code></pre>
 </div>
@@ -2529,13 +2533,13 @@ $ cd schwartztest</pre>
    dependencies {
       classpath "org.grails:grails-gradle-plugin:$grailsVersion"
       ...
-      classpath 'com.agileorbit:schwartz:1.0.0'
+      classpath 'com.agileorbit:schwartz:1.0.1'
    }
 }
 
 dependencies {
    ...
-   compile 'com.agileorbit:schwartz:1.0.0'
+   compile 'com.agileorbit:schwartz:1.0.1'
    ...
 }</code></pre>
 </div>
@@ -3387,13 +3391,13 @@ quartz {
    dependencies {
       classpath "org.grails:grails-gradle-plugin:$grailsVersion"
       ...
-      classpath 'com.agileorbit:schwartz:1.0.0'
+      classpath 'com.agileorbit:schwartz:1.0.1'
    }
 }
 
 dependencies {
    ...
-   compile 'com.agileorbit:schwartz:1.0.0'
+   compile 'com.agileorbit:schwartz:1.0.1'
    ...
 }</code></pre>
 </div>
@@ -3500,8 +3504,8 @@ dependencies {
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 1.0.0<br>
-Last updated 2016-07-12 04:22:18 UTC
+Version 1.0.1<br>
+Last updated 2016-07-11 22:42:48 -05:00
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prettify/r298/prettify.min.css">
