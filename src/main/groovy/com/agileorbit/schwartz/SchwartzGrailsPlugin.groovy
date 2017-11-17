@@ -67,6 +67,11 @@ class SchwartzGrailsPlugin extends Plugin {
 	}}
 
 	void doWithApplicationContext() {
+		if (!grailsApplication.config.getProperty('quartz.pluginEnabled', Boolean, true)) {
+			log.info 'Not initializing, quartz.pluginEnabled is false'
+			return
+		}
+
 		applicationContext.getBean('quartzJobFactory', SchwartzJobFactory).init()
 
 		applicationContext.getBean('quartzService', QuartzService).init()
