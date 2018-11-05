@@ -30,6 +30,7 @@ import org.quartz.UnableToInterruptJobException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Lazy
 
 import static org.quartz.JobBuilder.newJob
 import static org.quartz.JobKey.jobKey
@@ -48,7 +49,7 @@ trait SchwartzJob implements InitializingBean, InterruptableJob {
 	 * Dependency injection for Quartz service to make it available when
 	 * building triggers, when executing jobs, etc.
 	 */
-	@Autowired QuartzService quartzService
+	@Lazy @Autowired QuartzService quartzService
 
 	// Methods defining values and behaviors
 
