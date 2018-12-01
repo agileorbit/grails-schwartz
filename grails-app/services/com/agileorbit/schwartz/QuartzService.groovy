@@ -51,7 +51,6 @@ class QuartzService {
 	@Autowired protected GrailsApplication grailsApplication
 	@Autowired protected Scheduler quartzScheduler
 	@Autowired protected SessionBinderJobListener sessionBinderJobListener
-	@Autowired(required=false) protected SchwartzJob[] jobs
 
 	/**
 	 * Called from doWithApplicationContext() to do startup initialization tasks;
@@ -160,6 +159,7 @@ class QuartzService {
 	 * @throws SchedulerException
 	 */
 	void scheduleJobs() throws SchedulerException {
+		Collection<SchwartzJob> jobs = grailsApplication.mainContext.getBeansOfType(SchwartzJob).values()
 		for (SchwartzJob job in jobs) {
 			scheduleJob job
 		}
