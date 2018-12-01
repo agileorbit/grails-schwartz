@@ -15,13 +15,13 @@ buildscript {
    dependencies {
       classpath "org.grails:grails-gradle-plugin:$grailsVersion"
       ...
-      classpath 'com.agileorbit:schwartz:1.0.0-SNAPSHOT'
+      classpath 'com.agileorbit:schwartz:1.0.1'
    }
 }
 
 dependencies {
    ...
-   compile 'com.agileorbit:schwartz:1.0.0-SNAPSHOT'
+   compile 'com.agileorbit:schwartz:1.0.1'
    ...
 }
 
