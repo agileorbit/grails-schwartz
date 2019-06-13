@@ -5,9 +5,10 @@ import com.agileorbit.schwartz.util.InstantiateInterceptSchedulerFactory
 import com.agileorbit.schwartz.util.QuartzSchedulerObjects
 import grails.config.Config
 import grails.core.GrailsApplication
-import grails.test.mixin.integration.Integration
+import grails.testing.mixin.integration.Integration
 import groovy.sql.Sql
 import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
 import org.grails.config.NavigableMap
 import org.grails.config.NavigableMapPropertySource
 import org.grails.config.PropertySourcesConfig
@@ -42,13 +43,13 @@ abstract class AbstractQuartzSpec extends Specification {
 			'"' + description.methodName + '"(' + description.testClass.simpleName + ')'
 		}
 		protected void starting(Description description) {
-			log.debug 'Test {} starting', name(description)
+			println "Test ${name(description)} starting"
 		}
 		protected void succeeded(Description description) {
-			log.debug 'Test {} succeeded', name(description)
+			println "Test ${name(description)} succeeded"
 		}
 		protected void failed(Throwable e, Description description) {
-			log.debug 'Test {} failed, {} : {}', name(description), e.getClass().name, e.message
+			println "Test ${name(description)} failed, ${e.getClass().name} : ${e.message}"
 		}
 	}
 

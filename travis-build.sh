@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 EXIT_STATUS=0
 
 ./gradlew --stop
@@ -9,15 +10,15 @@ echo "TRAVIS_PULL_REQUEST: $TRAVIS_PULL_REQUEST"
 echo "TRAVIS_TAG: $TRAVIS_TAG"
 
 rm -rf build
-./gradlew clean check install --stacktrace || EXIT_STATUS=$?
+./gradlew clean schwartz:check --stacktrace || EXIT_STATUS=$?
 
 if [[ $EXIT_STATUS -eq 0 ]]; then
-	./integration-test-app/run_integration_tests.sh || EXIT_STATUS=$?
+	./gradlew integration-test-app:integrationTest --stacktrace || EXIT_STATUS=$?
 fi
 
 if [[ -n $TRAVIS_TAG && $TRAVIS_PULL_REQUEST == 'false' && $EXIT_STATUS -eq 0 ]]; then
-	./gradlew bintrayUpload --stacktrace
-	./gradlew docs --stacktrace
+	./gradlew schwartz:bintrayUpload --stacktrace
+	./gradlew schwartz:docs --stacktrace
 
 	git config --global user.name "$GIT_NAME"
 	git config --global user.email "$GIT_EMAIL"
@@ -26,10 +27,11 @@ if [[ -n $TRAVIS_TAG && $TRAVIS_PULL_REQUEST == 'false' && $EXIT_STATUS -eq 0 ]]
 
 	git clone https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git -b gh-pages gh-pages --single-branch > /dev/null
 	cd gh-pages
+    pwd
 
 	rm -rf latest
 	mkdir latest
-	cp -r ../build/docs/. ./latest/
+	cp -r ../schwartz/build/docs/. ./latest/
 
 	mv -f latest/ghpages.html index.html
 	git add .

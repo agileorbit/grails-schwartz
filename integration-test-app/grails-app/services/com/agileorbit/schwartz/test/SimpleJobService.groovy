@@ -1,7 +1,7 @@
 package com.agileorbit.schwartz.test
 
 import com.agileorbit.schwartz.SchwartzJob
-import grails.transaction.Transactional
+import grails.gorm.transactions.Transactional
 import groovy.util.logging.Slf4j
 import org.quartz.JobExecutionContext
 import org.quartz.JobExecutionException

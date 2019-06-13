@@ -1,0 +1,121 @@
+buildscript {
+	repositories {
+		mavenLocal()
+		maven { url 'https://repo.grails.org/grails/core' }
+		jcenter()
+	}
+	dependencies {
+		classpath "org.grails:grails-gradle-plugin:$grailsVersion"
+		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.9.2'
+	}
+}
+
+version file('version.txt').text.trim()
+group 'com.agileorbit'
+
+apply plugin: 'idea'
+apply plugin: 'org.grails.grails-plugin'
+apply plugin: 'org.grails.grails-plugin-publish'
+apply plugin: 'org.asciidoctor.convert'
+
+repositories {
+	mavenLocal()
+	maven { url 'https://repo.grails.org/grails/core' }
+}
+
+configurations {
+	developmentOnly
+	runtimeClasspath {
+		extendsFrom developmentOnly
+	}
+}
+
+dependencies {
+	compile 'org.grails:grails-core'
+	compile 'org.grails:grails-plugin-datasource'
+
+	String quartzVersion = '2.2.3'
+	compile 'org.quartz-scheduler:quartz:' + quartzVersion, {
+		exclude module: 'c3p0'
+	}
+	compile 'org.quartz-scheduler:quartz-jobs:' + quartzVersion
+	compile 'org.springframework:spring-context-support'
+	compile "org.grails:grails-web-boot"
+	compile "org.grails:grails-logging"
+	implementation 'org.codehaus.groovy:groovy-dateutil'
+
+	provided 'org.grails.plugins:hibernate5'
+	provided 'org.liquibase:liquibase-core:3.6.1'
+	compileOnly "io.micronaut:micronaut-inject-groovy"
+	compileOnly 'org.hibernate:hibernate-core:5.1.1.Final'
+
+	profile "org.grails.profiles:web-plugin"
+
+	testCompile "org.grails:grails-gorm-testing-support"
+	testCompile "org.mockito:mockito-core"
+	testCompile "org.grails:grails-web-testing-support"
+//	testCompile "org.grails:grails-plugin-testing"
+}
+
+grailsPublish {
+	desc = 'Quartz integration'
+	developers = [burtbeckwith: 'Burt Beckwith']
+	githubSlug = 'agileorbit/grails-schwartz'
+	issueTrackerUrl = 'https://github.com/agileorbit/grails-schwartz/issues'
+	license {
+		name = 'Apache-2.0'
+	}
+	title = 'Schwartz Plugin'
+	userOrg = 'agileorbit'
+	repo = 'grails-plugins'
+	vcsUrl = 'https://github.com/agileorbit/grails-schwartz/'
+}
+
+task docs(dependsOn: [asciidoctor, groovydoc]) {
+	doFirst {
+		File dir = new File(project.buildDir, 'docs')
+
+		['pdf', 'epub'].each { String ext ->
+			File f = new File(dir, 'index.' + ext)
+			if (f.exists()) {
+				f.renameTo new File(dir, project.name + '-' + project.version + '.' + ext)
+			}
+		}
+
+		new File(project.buildDir, 'docs/ghpages.html') << file('src/docs/index.tmpl').text.replaceAll('@VERSION@', project.version)
+	}
+	copy {
+		from "${project.buildDir}/src/docs"
+		into new File(project.buildDir, 'docs').path
+		include '**/*.jpg', '**/*.png'
+	}
+}
+
+asciidoctor {
+	separateOutputDirs = false
+	sourceDir = file("${project.projectDir}/src/docs")
+	sources {
+		include 'index.adoc'
+	}
+	outputDir new File(project.buildDir, 'docs')
+	backends 'html5'
+	attributes  copyright           : 'Apache License, Version 2.0',
+	            docinfo1            : 'true',
+	            doctype             : 'book',
+	            encoding            : 'utf-8',
+	            'front-cover-image'  : 'image:cover.png[Front Cover,800,600]',
+	            icons               : 'font',
+	            id                  : project.name + ':' + project.version,
+	            idprefix            : '',
+	            idseparator         : '-',
+	            lang                : 'en',
+	            linkattrs           : true,
+	            numbered            : '',
+	            producer            : 'Asciidoctor',
+	            revnumber           : project.version,
+	            setanchors          : true,
+	           'source-highlighter' : 'prettify',
+	            toc                 : 'left',
+	            toc2                : '',
+	            toclevels           : '2'
+}

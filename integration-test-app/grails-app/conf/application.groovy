@@ -5,7 +5,7 @@ import org.quartz.simpl.SimpleInstanceIdGenerator
 import org.quartz.simpl.SimpleThreadPool
 
 dataSource {
-	dbCreate = 'update'
+	dbCreate = 'create-drop'
 	driverClassName = 'org.h2.Driver'
 	password = ''
 	pooled = true

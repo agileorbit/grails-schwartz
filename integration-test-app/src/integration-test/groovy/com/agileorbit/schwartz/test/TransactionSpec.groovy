@@ -9,6 +9,7 @@ import org.quartz.TriggerKey
 import org.quartz.impl.matchers.GroupMatcher
 import org.quartz.listeners.TriggerListenerSupport
 import org.springframework.transaction.TransactionStatus
+import spock.lang.Shared
 
 import static com.agileorbit.schwartz.builder.BuilderFactory.builder
 
@@ -53,12 +54,11 @@ class TransactionSpec extends AbstractQuartzSpec {
 		quartzScheduler.scheduleJob builder('tx', triggerGroup)
 				.job(simpleJobService)
 				.jobData(testTransaction: true)
-				.noRepeat()
+				.noRepeat().priority(1)
 				.build()
-		sleep 100
+		sleep 1000
 
 		then:
-		triggerKey
 		jobKey
 		jobKey.name == 'SimpleJobService'
 		result instanceof Map
@@ -66,7 +66,7 @@ class TransactionSpec extends AbstractQuartzSpec {
 		result.transactionStatus instanceof TransactionStatus
 		result.stackTrace instanceof StackTraceElement[]
 		result.stackTrace.find { StackTraceElement e ->
-			e.className == 'grails.transaction.GrailsTransactionTemplate' && e.methodName == 'execute'
+			e.className == 'grails.gorm.transactions.GrailsTransactionTemplate' && e.methodName == 'execute'
 		}
 	}
 
@@ -76,8 +76,9 @@ class TransactionSpec extends AbstractQuartzSpec {
 				.job(simpleStatefulJobService)
 				.jobData(testTransaction: true)
 				.noRepeat()
+				.priority(1)
 				.build()
-		sleep 100
+		sleep 1000
 
 		then:
 		triggerKey
