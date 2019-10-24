@@ -174,6 +174,14 @@ class SchwartzJobFactoryIntegrationSpec extends AbstractQuartzSpec {
 		otherStringValue == jobResult.otherStringValueFromMergedData
 
 		jobInstance
+
+        cleanup:
+        // Remove the listeners used in this test to prevent the from polluting
+        // other tests using the same quartz scheduler
+        // (example ConfigValidationSpec.check configured global listeners)
+        quartzScheduler.listenerManager.removeJobListener 'SchwartzJobFactoryIntegrationSpec'
+        quartzScheduler.listenerManager.removeSchedulerListener listeners
+        quartzScheduler.listenerManager.removeTriggerListener 'SchwartzJobFactoryIntegrationSpec'
 	}
 
 	private TriggerFiredBundle createTriggerFiredBundle(JobDetail jobDetail, OperableTrigger trigger) {
