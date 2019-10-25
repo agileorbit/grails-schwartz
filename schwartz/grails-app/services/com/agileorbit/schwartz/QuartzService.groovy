@@ -47,7 +47,7 @@ import static org.quartz.impl.matchers.GroupMatcher.anyGroup
 @Transactional
 class QuartzService {
 
-	@Autowired protected DataSource dataSource
+	@Autowired(required=false) protected DataSource dataSource
 	@Autowired protected GrailsApplication grailsApplication
 	@Autowired protected Scheduler quartzScheduler
 	@Autowired protected SessionBinderJobListener sessionBinderJobListener
