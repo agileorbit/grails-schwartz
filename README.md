@@ -1,6 +1,5 @@
 This project is no longer maintained. [DB-Scheduler](https://github.com/kagkarlsson/db-scheduler) is a good alternative solution.
 
-[![Build Status](https://travis-ci.org/agileorbit/grails-schwartz.svg?branch=master)](https://travis-ci.org/agileorbit/grails-schwartz)
 # Grails Schwartz Plugin
 
 The Schwartz plugin integrates the [Quartz Enterprise](http://www.quartz-scheduler.org/) Job Scheduler with Grails, making it easy to schedule and manage recurring and ad-hoc jobs for asynchronous and synchronous processing.
