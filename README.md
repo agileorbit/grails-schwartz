@@ -1,3 +1,5 @@
+This project is no longer maintained. [DB-Scheduler](https://github.com/kagkarlsson/db-scheduler) is a good alternative solution.
+
 [![Build Status](https://travis-ci.org/agileorbit/grails-schwartz.svg?branch=master)](https://travis-ci.org/agileorbit/grails-schwartz)
 # Grails Schwartz Plugin
 
